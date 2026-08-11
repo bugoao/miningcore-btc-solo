@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-offline-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10 SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore MiningcoreBtcSolo.sln
+
+      - name: Build
+        run: dotnet build MiningcoreBtcSolo.sln -c Release --no-restore
+
+      - name: Run offline regressions
+        shell: bash
+        run: |
+          for mode in vardiff encoding shutdown safety synthetic-gbt; do
+            dotnet run --project src/MiningcoreBtcSolo.Regtest/MiningcoreBtcSolo.Regtest.csproj \
+              -c Release --no-build -- "$mode"
+          done
